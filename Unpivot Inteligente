@@ -1,0 +1,124 @@
+# 05PQ - 🔄 Unpivot Inteligente | Transformação Dinâmica no Power Query
+
+## David Felicio  
+Analista de Dados | Power BI | Power Query | DAX | Análise de Dados | Visualização de Dados | Data Visualizations | Data Analytics | Python | SQL | Business Intelligence
+
+**7 de março de 2025**  
+
+No Power Query, um dos desafios mais comuns é transformar dados de forma dinâmica, sem precisar ajustar manualmente sempre que novas colunas surgem. Neste artigo, vamos explorar uma abordagem avançada para fazer Unpivot dinâmico, garantindo que nossa solução seja flexível e se adapte automaticamente a mudanças na estrutura da tabela.
+
+## 🚀 Cenário do Problema
+Imagine que você recebe um arquivo Excel regularmente com dados estruturados como no exemplo abaixo:
+
+A cada mês, novas colunas aparecem com os valores mensais de cada funcionário.  
+Se fizermos um Unpivot manual, precisaríamos sempre selecionar as colunas que representam os meses, o que tornaria o processo rígido e pouco eficiente.
+
+**Nosso objetivo:** Criar uma solução dinâmica para detectar e desmembrar apenas as colunas de datas, deixando as demais intactas.
+
+Antes de começar o passo a passo, entenda como funciona a função `Table.UnpivotOtherColumns` no Power Query (M): ela é usada para transformar colunas de uma tabela de um formato largo para um formato longo (*tidy data*).  
+
+Ela permite especificar quais colunas devem ser mantidas, enquanto todas as outras são desmembradas em um formato de chave-valor.
+
+### 📌 Sintaxe da função
+```m
+Table.UnpivotOtherColumns(tabela, colunasManter, nomeNovaColunaAtributo, nomeNovaColunaValor)
+```
+
+### 📖 Parâmetros
+1. **tabela** → A tabela que queremos transformar.  
+2. **colunasManter** → Uma lista das colunas que **NÃO** serão desmembradas (exemplo: IDs ou categorias fixas).  
+3. **nomeNovaColunaAtributo** → O nome da nova coluna que conterá os nomes das colunas desmembradas.  
+4. **nomeNovaColunaValor** → O nome da nova coluna que conterá os valores correspondentes.
+
+## 🎯 Exemplo prático
+
+### 📊 Tabela Original
+
+Agora, aplicamos:
+```m
+Table.UnpivotOtherColumns(TabelaOriginal, {"ID", "Nome"}, "Mês", "Valor")
+```
+
+### 📍 Resultado após o Unpivot
+
+## 🔍 Passo a Passo da Solução
+Abaixo, detalhamos a query utilizada para realizar essa transformação de forma automática:
+
+```m
+let
+    // 1️⃣ Importação do arquivo Excel
+    Fonte = Excel.Workbook(File.Contents("C:\\Users\\pasta\\arquivo.xlsx"), null, true),
+    Tabela1_Table = Fonte{[Item="Tabela1",Kind="Table"]}[Data],
+
+    // 2️⃣ Capturar os nomes das colunas
+    NomesDasColunas = Table.ColumnNames(Tabela1_Table),
+
+    // 3️⃣ Identificar dinamicamente quais colunas NÃO são datas
+    ListaDeNomes = 
+        List.Select(
+            NomesDasColunas,
+            each not (try Date.From(Text.From(_)) is date otherwise false)
+        ),
+
+    // 4️⃣ Realizar Unpivot das colunas dinâmicas
+    #"Outras Colunas Não Dinâmicas" = Table.UnpivotOtherColumns(Tabela1_Table, ListaDeNomes, "Atributo", "Valor")
+    
+    in
+    #"Outras Colunas Não Dinâmicas"
+```
+
+## 🛠 Explicação da Query
+
+### 🔹 2. Capturar os nomes das colunas
+```m
+NomesDasColunas = Table.ColumnNames(Tabela1_Table),
+```
+Extraímos uma lista contendo os nomes das colunas presentes na tabela.
+
+**Exemplo do conteúdo de `NomesDasColunas`:**
+```m
+{"ID", "Nome", "01/2024", "02/2024", "03/2024"}
+```
+
+### 🔹 3. Identificar dinamicamente quais colunas NÃO são datas
+```m
+ListaDeNomes = List.Select(
+    NomesDasColunas,
+    each not (try Date.From(Text.From(_)) is date otherwise false)
+),
+```
+Aqui acontece a mágica da automatização! ✨
+
+- `try Date.From(Text.From(_)) is date otherwise false`  
+  - Converte o nome da coluna para texto e tenta transformá-lo em data.
+  - Se for uma data válida, retorna `true`.
+  - Se não for uma data, retorna `false`.
+- `List.Select(..., each not (...))`  
+  - Mantemos apenas os nomes das colunas que **não** são datas, como "ID" e "Nome".
+
+**Exemplo do resultado de `ListaDeNomes`:**
+```m
+{"ID", "Nome"}
+```
+Agora temos apenas os nomes das colunas que não precisam de Unpivot, para usarmos no próximo passo.
+
+### 🔹 4. Realizar Unpivot das colunas dinâmicas
+```m
+#"Outras Colunas Não Dinâmicas" = Table.UnpivotOtherColumns(Tabela1_Table, ListaDeNomes, "Atributo", "Valor"),
+```
+
+Agora os valores mensais foram reorganizados em uma estrutura *tidy data*, facilitando análises dinâmicas no Power BI.
+
+## 🎯 Benefícios dessa Abordagem
+✅ **Totalmente dinâmica** – adapta-se automaticamente a novas colunas adicionadas ao Excel.  
+✅ **Evita manutenção manual** – elimina ajustes manuais constantes.  
+✅ **Melhora a escalabilidade** – aplicável a diversas bases de dados sem ajustes manuais.  
+
+## 🚀 Por que usar `Table.UnpivotOtherColumns`?
+✅ **Automatização**: Novas colunas são transformadas sem precisar modificar a query.  
+✅ **Flexibilidade**: Perfeito para colunas dinâmicas, como meses ou produtos.  
+✅ **Facilidade de Análise**: Dados no formato longo são mais fáceis de analisar no Power BI.  
+
+## 🏆 Conclusão
+Criar Unpivot dinâmico no Power Query é uma técnica poderosa que evita ajustes constantes, tornando a solução escalável e eficiente. 🚀
+
